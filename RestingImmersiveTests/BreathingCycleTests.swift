@@ -63,4 +63,13 @@ struct BreathingCycleTests {
         #expect(BreathingCycle.state(atElapsed: -5).phase == .inhale)
         #expect(BreathingCycle.positionInCycle(.infinity) == 0)
     }
+
+    @Test func nextPhaseChangeFindsTheFollowingBoundary() {
+        #expect(BreathingCycle.nextPhaseChange(after: 0) == 4)
+        #expect(BreathingCycle.nextPhaseChange(after: 3.9) == 4)
+        #expect(BreathingCycle.nextPhaseChange(after: 4) == 10)
+        #expect(BreathingCycle.nextPhaseChange(after: 9.5) == 10)
+        #expect(BreathingCycle.nextPhaseChange(after: 10) == 14)
+        #expect(BreathingCycle.nextPhaseChange(after: 123) == 124)
+    }
 }

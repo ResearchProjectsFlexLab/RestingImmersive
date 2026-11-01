@@ -1,10 +1,16 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The single entry window: choose a length, optionally enable guided breathing, and enter.
 struct LaunchView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.openImmersiveSpace) private var openImmersiveSpace
     @Environment(\.dismissWindow) private var dismissWindow
+
+    @State private var exportDocument = LogFile(text: "")
+    @State private var exportType: UTType = .plainText
+    @State private var showExporter = false
+    @State private var saveNotice: String?
 
     var body: some View {
         @Bindable var appModel = appModel
@@ -69,12 +75,45 @@ struct LaunchView: View {
                 .accessibilityHint("Opens a fully immersive space for your meditation.")
 
                 statusMessage
+
+                if !appModel.session.log.isEmpty {
+                    Menu {
+                        Button("Text (readable)") { beginExport(as: .plainText) }
+                        Button("CSV (for analysis)") { beginExport(as: .commaSeparatedText) }
+                    } label: {
+                        Label("Save session log", systemImage: "square.and.arrow.down")
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityHint("Saves a timestamped log of your last session.")
+                    if let saveNotice {
+                        Text(saveNotice)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
         .padding(40)
         .frame(minWidth: 480, idealWidth: 560, maxWidth: 640, minHeight: 640, idealHeight: 720)
         .onAppear { appModel.isMainWindowOpen = true }
         .onDisappear { appModel.isMainWindowOpen = false }
+        .fileExporter(
+            isPresented: $showExporter,
+            document: exportDocument,
+            contentType: exportType,
+            defaultFilename: "resting-session-log"
+        ) { result in
+            switch result {
+            case .success:
+                saveNotice = String(localized: "Saved.")
+            case .failure(let error):
+                let nsError = error as NSError
+                let cancelled = nsError.domain == NSCocoaErrorDomain && nsError.code == CocoaError.userCancelled.rawValue
+                if !cancelled {
+                    saveNotice = String(localized: "Could not save.")
+                }
+            }
+        }
         #if DEBUG
         .task {
             // Lets the simulator be verified without pointer input:
@@ -131,8 +170,18 @@ struct LaunchView: View {
         }
     }
 
+    private func beginExport(as type: UTType) {
+        let log = appModel.session.log
+        guard !log.isEmpty else { return }
+        exportDocument = LogFile(text: type == .commaSeparatedText ? log.csvText : log.text)
+        exportType = type
+        saveNotice = nil
+        showExporter = true
+    }
+
     private func enterSanctuary() async {
         guard appModel.beginOpening() else { return }
+        saveNotice = nil
         switch await openImmersiveSpace(id: AppModel.immersiveSpaceID) {
         case .opened:
             appModel.didOpenImmersiveSpace()
@@ -145,6 +194,28 @@ struct LaunchView: View {
         @unknown default:
             appModel.didFailToOpenImmersiveSpace(userCancelled: false)
         }
+    }
+}
+
+/// Text or CSV document handed to the system save panel.
+struct LogFile: FileDocument {
+    static var readableContentTypes: [UTType] { [.plainText, .commaSeparatedText] }
+
+    var text: String
+
+    init(text: String) {
+        self.text = text
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        guard let data = configuration.file.regularFileContents else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        text = String(decoding: data, as: UTF8.self)
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: Data(text.utf8))
     }
 }
 

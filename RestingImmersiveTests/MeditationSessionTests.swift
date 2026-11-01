@@ -262,7 +262,7 @@ struct MeditationSessionTests {
 @MainActor
 struct MeditationSessionTickerTests {
     @Test func tickerRunsOnlyWhileRunning() async throws {
-        let session = MeditationSession(tickInterval: .milliseconds(20))
+        let session = MeditationSession(tickInterval: .milliseconds(20), log: SessionLog(persists: false))
         #expect(!session.isTicking)
         session.start(.init(duration: 60, guidedBreathing: true))
         #expect(session.isTicking)
@@ -275,7 +275,7 @@ struct MeditationSessionTickerTests {
     }
 
     @Test func restartingDoesNotCreateOverlappingTickers() async throws {
-        let session = MeditationSession(tickInterval: .milliseconds(20))
+        let session = MeditationSession(tickInterval: .milliseconds(20), log: SessionLog(persists: false))
         for _ in 0..<5 {
             session.start(.init(duration: 60, guidedBreathing: true))
         }
@@ -285,7 +285,7 @@ struct MeditationSessionTickerTests {
     }
 
     @Test func tickerCompletesShortSessionOnItsOwn() async throws {
-        let session = MeditationSession(tickInterval: .milliseconds(20))
+        let session = MeditationSession(tickInterval: .milliseconds(20), log: SessionLog(persists: false))
         session.start(.init(duration: 1, guidedBreathing: true))
         let deadline = ContinuousClock.now + .seconds(5)
         while session.status == .running, ContinuousClock.now < deadline {

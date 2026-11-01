@@ -58,6 +58,14 @@ enum BreathingCycle {
         }
     }
 
+    /// Session time of the first phase change strictly after `elapsed`.
+    static func nextPhaseChange(after elapsed: TimeInterval) -> TimeInterval {
+        let elapsed = max(0, elapsed)
+        let cycleStart = (elapsed / cycleDuration).rounded(.down) * cycleDuration
+        let position = elapsed - cycleStart
+        return position < inhaleDuration ? cycleStart + inhaleDuration : cycleStart + cycleDuration
+    }
+
     static func positionInCycle(_ elapsed: TimeInterval) -> TimeInterval {
         let clamped = max(0, elapsed)
         let position = clamped.truncatingRemainder(dividingBy: cycleDuration)

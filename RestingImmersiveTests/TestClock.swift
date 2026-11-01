@@ -11,6 +11,10 @@ final class TestClock {
     }
 
     func makeSession() -> MeditationSession {
-        MeditationSession(now: { [unowned self] in self.now }, tickInterval: nil)
+        MeditationSession(
+            now: { [unowned self] in self.now },
+            tickInterval: nil,
+            log: SessionLog(persists: false, wallClock: { [unowned self] in Date(timeIntervalSince1970: self.now) })
+        )
     }
 }
